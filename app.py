@@ -18,7 +18,7 @@ app = Flask(__name__)
 app.secret_key = "inventory_secret"
 
 # MongoDB Connection
-client = MongoClient("mongodb://localhost:27017/")
+client = MongoClient("mongodb+srv://Rudra:Rudra123@cluster0.5zoihpi.mongodb.net/?appName=Cluster0")
 db = client["smart_inventory"]
 items_col = db["items"]
 transactions_col = db["transactions"]
@@ -300,4 +300,4 @@ if __name__ == "__main__":
             "password": hashed_password
         })
 
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=10000)
