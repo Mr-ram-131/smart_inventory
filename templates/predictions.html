@@ -1,0 +1,16 @@
+<h2>Stock Predictions</h2>
+<table border="1">
+<tr>
+<th>Name</th>
+<th>RFID</th>
+<th>Predicted Weekly Sales</th>
+</tr>
+{% for p in predictions %}
+<tr>
+<td>{{p.name}}</td>
+<td>{{p.rfid}}</td>
+<td>{{p.predicted_weekly_sales}}</td>
+</tr>
+{% endfor %}
+</table>
+<a href="/dashboard">Back</a>

@@ -1,0 +1,215 @@
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('error') === 'duplicate') {
+    alert("Item already exists!");
+}
+</script>
+
+{% if error_message is defined %}
+<script>
+alert("{{ error_message }}");
+</script>
+{% endif %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Inventory Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+
+<nav class="navbar navbar-dark bg-dark px-4">
+    <span class="navbar-brand">Smart Inventory System</span>
+    <span class="text-white fw-bold">Welcome, {{ username }}</span>
+    <div>
+        <a href="/predict" class="btn btn-warning btn-sm">Predictions</a>
+        <a href="/transactions" class="btn btn-info btn-sm">Transactions</a>
+        <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
+    </div>
+</nav>
+
+<div class="container mt-4">
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-body text-center">
+                    <h5>Total Products</h5>
+                    <h3>{{ total_products }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-body text-center">
+                    <h5>Total Stock</h5>
+                    <h3>{{ total_stock }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow border-danger">
+                <div class="card-body text-center">
+                    <h5 class="text-danger">Low Stock Items</h5>
+                    <h3 class="text-danger">{{ low_stock_count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <h5>Add New Item</h5>
+            <form method="POST" action="/add_item" class="row g-3">
+                <div class="col-md-5">
+                    <input name="name" class="form-control" placeholder="Item Name" required>
+                </div>
+                <div class="col-md-3">
+                    <input name="quantity" type="number" class="form-control" placeholder="Quantity" required>
+                </div>
+                <div class="col-md-2">
+                    <input name="price" type="number" step="0.01" class="form-control" placeholder="Price" required>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100">Add Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <form method="GET" action="/dashboard" class="mb-3">
+    <div class="input-group">
+
+        <input 
+        type="text" 
+        name="search" 
+        class="form-control"
+        placeholder="Search product name..."
+        value="{{ search_query if search_query else '' }}">
+
+        <button class="btn btn-primary" type="submit">
+        Search
+        </button>
+        <a href="/dashboard" class="btn btn-secondary">
+        Clear
+        </a>
+
+    </div>
+</form>
+
+    <!-- Inventory Table -->
+    <div class="card shadow">
+        <div class="card-body">
+            <h5 class="mb-3">Inventory List</h5>
+            <h5 class="text-end text-success mb-3">
+            Total Inventory Value: ₹ {{ total_value }}
+            </h5>
+            <table class="table table-bordered table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Name</th>
+                        <th>RFID</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                {% for item in items %}
+                    <tr class="{% if item.quantity <= 5 %} table-danger {% endif %}">
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.rfid_tag }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>₹ {{ item.price }}</td>
+                        <td>
+                            {% if item.quantity <= 5 %}
+                                <span class="badge bg-danger">Low Stock</span>
+                            {% else %}
+                                <span class="badge bg-success">Normal</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="/scan/{{item.rfid_tag}}/in" class="btn btn-success btn-sm">IN</a>
+                            <a href="/scan/{{item.rfid_tag}}/out" class="btn btn-warning btn-sm">OUT</a>                            
+                            <a href="/edit_item/{{ item._id }}" class="btn btn-primary btn-sm">Edit</a>
+                            <a href="/export" class="btn btn-success btn-sm">Export Excel</a>
+                            <a href="/delete_item/{{ item._id }}" 
+                            class="btn btn-danger btn-sm"
+                            onclick="return confirm('Delete this product?')">
+                            Delete
+                            </a>
+                            
+                        </td>
+                    </tr>
+                {% endfor %}
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5>Stock Levels</h5>
+                    <canvas id="stockChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5>Transaction Trend</h5>
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const stockCtx = document.getElementById('stockChart');
+    new Chart(stockCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ item_names | tojson }},
+            datasets: [{
+                label: 'Quantity',
+                data: {{ item_quantities | tojson }},
+                borderWidth: 1
+            }]
+        }
+    });
+
+    const trendCtx = document.getElementById('trendChart');
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: {{ trend_dates | tojson }},
+            datasets: [{
+                label: 'Transactions Per Day',
+                data: {{ trend_counts | tojson }},
+                fill: false,
+                tension: 0.1
+            }]
+        }
+    });
+</script>
+
+</body>
+</html>
