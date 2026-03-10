@@ -5,3 +5,4 @@ openpyxl
 werkzeug
 gunicorn
 dnspython
+python-dotenv
