@@ -144,6 +144,35 @@ def register():
         return redirect("/login")
 
     return render_template("register.html")
+
+#-------- ADMIN DASHBOARD --------
+@app.route('/admin')
+def admin():
+
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    user = users_col.find_one({"username": session["user"]})
+
+    # allow only admin
+    if user.get("role") != "admin":
+        return "Access Denied"
+
+    users = list(users_col.find())
+
+    user_data = []
+
+    for u in users:
+        product_count = items_col.count_documents({"owner": u["username"]})
+        transaction_count = transactions_col.count_documents({"owner": u["username"]})
+
+        user_data.append({
+            "username": u["username"],
+            "products": product_count,
+            "transactions": transaction_count
+        })
+
+    return render_template("admin.html", users=user_data)   
 # -------- ADD ITEM --------
 @app.route("/add_item", methods=["POST"])
 def add_item():
