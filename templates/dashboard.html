@@ -25,7 +25,7 @@ alert("{{ error_message }}");
     <span class="navbar-brand">Smart Inventory System</span>
     <span class="text-white fw-bold">Welcome, {{ username }}</span>
     <div>
-        <a href="/predict" class="btn btn-warning btn-sm">Predictions</a>
+        <a href="{{ url_for('predict') }}" class="btn btn-primary">Prediction</a>
         <a href="/transactions" class="btn btn-info btn-sm">Transactions</a>
         <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
         <a href="/admin">Admin Panel</a>

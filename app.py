@@ -149,20 +149,24 @@ def register():
 @app.route('/admin')
 def admin():
 
+    # check if user logged in
     if 'user' not in session:
         return redirect(url_for('login'))
 
-    user = users_col.find_one({"username": session["user"]})
-
-    # allow only admin
-    if user.get("role") != "admin":
+    # allow only admin user
+    if session['user'] != "admin":
         return "Access Denied"
 
     users = list(users_col.find())
 
+    total_users = users_col.count_documents({})
+    total_products = items_col.count_documents({})
+    total_transactions = transactions_col.count_documents({})
+
     user_data = []
 
     for u in users:
+
         product_count = items_col.count_documents({"owner": u["username"]})
         transaction_count = transactions_col.count_documents({"owner": u["username"]})
 
@@ -172,7 +176,13 @@ def admin():
             "transactions": transaction_count
         })
 
-    return render_template("admin.html", users=user_data)   
+    return render_template(
+        "admin.html",
+        users=user_data,
+        total_users=total_users,
+        total_products=total_products,
+        total_transactions=total_transactions
+    )
 # -------- ADD ITEM --------
 @app.route("/add_item", methods=["POST"])
 def add_item():
@@ -295,20 +305,31 @@ def transactions():
 # -------- ML PREDICTION --------
 @app.route('/predict')
 def predict():
+
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
     items = list(items_col.find({"owner": session["user"]}))
     predictions = []
 
     for item in items:
-        pred = model.predict(np.array([[item['quantity']]]))[0]
+
+        quantity = item.get("quantity", 0)
+
+        try:
+            result = model.predict([[quantity]])
+            predicted_value = int(result[0])
+        except:
+            predicted_value = 0
+
         predictions.append({
-            "name": item['name'],
-            "rfid": item['rfid_tag'],
-            "predicted_weekly_sales": int(pred)
+            "name": item.get("name", "Unknown"),
+            "rfid": item.get("rfid_tag", "N/A"),
+            "quantity": quantity,
+            "prediction": predicted_value
         })
 
-    return render_template('predictions.html', predictions=predictions)
-
-
+    return render_template("prediction.html", predictions=predictions)
 # -------- LOGOUT --------
 @app.route('/logout')
 def logout():
