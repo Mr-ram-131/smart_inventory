@@ -52,7 +52,15 @@ def login():
         from werkzeug.security import check_password_hash
 
         if user and check_password_hash(user["password"], password):
+
             session["user"] = username
+
+            # store role in session
+            if username == "admin":
+                session["role"] = "admin"
+            else:
+                session["role"] = "user"
+
             return redirect("/dashboard")
 
         return render_template("login.html", error="Invalid credentials")
@@ -154,7 +162,7 @@ def admin():
         return redirect(url_for('login'))
 
     # allow only admin user
-    if session['user'] != "admin":
+    if session.get('user') != "admin":
         return "Access Denied"
 
     users = list(users_col.find())
