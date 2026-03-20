@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 MAIL_SERVER = "smtp.gmail.com"
 MAIL_PORT = 587
 MAIL_USERNAME = "pradhanmramasankar15@gmail.com"  # Your email
-MAIL_PASSWORD = "nsnr iffc zyip esft"      # Not your login password, a Google App Password
+MAIL_PASSWORD = "dkft mphv uqkv cyzr"      # Not your login password, a Google App Password
 ADMIN_EMAIL = "pradhanmramasankar15@gmail.com"    # Where the alerts go
 
 # Add 'recipient_email' as a parameter
@@ -352,7 +352,8 @@ def scan_item(rfid_tag, action):
                     owner_user = users_col.find_one({"username": item["owner"]})
                     
                     # 2. If they have an email saved, send the alert to THEM
-                    if owner_user and owner_user.get("email"):
+                    if owner_user and "email" in owner_user:
+                        print(f"DEBUG: Found email for {item['owner']}: {owner_user['email']}")
                         send_low_stock_alert(item["name"], new_quantity, owner_user["email"])
                     else:
                         print(f"No email found for user {item['owner']}")
