@@ -1,220 +1,240 @@
-<script>
-const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.get('error') === 'duplicate') {
-    alert("Item already exists!");
-}
-</script>
-
-{% if error_message is defined %}
-<script>
-alert("{{ error_message }}");
-</script>
-{% endif %}
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Smart Inventory Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Inventory | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .sidebar-link:hover { background-color: rgba(255,255,255,0.1); }
+        .glass-card { background: white; border: 1px solid #e2e8f0; border-radius: 1rem; transition: all 0.3s ease; }
+        .glass-card:hover { border-color: #6366f1; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+    </style>
 </head>
+<body class="flex min-h-screen">
 
-<body class="bg-light">
+    <aside class="w-64 bg-slate-900 text-white flex flex-col hidden md:flex sticky top-0 h-screen">
+        <div class="p-6 text-xl font-bold border-b border-slate-800 flex items-center gap-2">
+            <div class="w-8 h-8 bg-indigo-500 rounded-lg"></div>
+            Smart Inventory
+        </div>
+        <nav class="flex-1 p-4 space-y-2 mt-4">
+            <a href="/dashboard" class="flex items-center gap-3 p-3 bg-indigo-600 rounded-lg text-white">Dashboard</a>
+            <a href="{{ url_for('predict') }}" class="flex items-center gap-3 p-3 sidebar-link rounded-lg text-slate-300">ML Predictions</a>
+            <a href="{{ url_for('transactions') }}" class="flex items-center gap-3 p-3 sidebar-link rounded-lg text-slate-300">Transactions</a>
+            <a href="/scanner" class="flex items-center gap-3 p-3 sidebar-link rounded-lg text-slate-300">
+                <span class="w-2 h-2 bg-emerald-400 rounded-full"></span>
+                Scan Station
+            </a>
+            {% if session.get('role') == 'admin' %}
+            <a href="/admin" class="flex items-center gap-3 p-3 sidebar-link rounded-lg text-red-400">Admin Panel</a>
+            {% endif %}
+        </nav>
+        <div class="p-4 border-t border-slate-800">
+            <a href="{{ url_for('logout') }}" class="flex items-center gap-3 p-3 text-red-400 hover:bg-red-900/20 rounded-lg">Logout</a>
+        </div>
+    </aside>
 
+    <main class="flex-1 p-8">
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-800">Welcome, {{ username }} 👋</h2>
+                <p class="text-slate-500">Here's what's happening in your warehouse today.</p>
+            </div>
+            <div class="flex gap-4">
+                <form method="GET" action="/dashboard" class="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                    <input type="text" name="search" placeholder="Search product..." 
+                           value="{{ search_query if search_query else '' }}" 
+                           class="px-4 py-2 outline-none w-64 text-slate-700 bg-transparent">
+            
+                    {% if search_query %}
+                    <a href="/dashboard" class="text-slate-400 hover:text-slate-600 px-2 transition-colors" title="Clear search">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </a>
+                    {% endif %}
 
-<nav class="navbar navbar-dark bg-dark px-4">
-    <span class="navbar-brand">Smart Inventory System</span>
-    <span class="text-white fw-bold">Welcome, {{ username }}</span>
-    <div>
-        <a href="{{ url_for('predict') }}" class="btn btn-primary">Prediction</a>
-        <a href="{{ url_for('transactions') }}" class="btn btn-info btn-sm">Transactions</a>
-        <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
-        {% if session.get('role') == 'admin' %}
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 font-semibold transition-all">
+                        Search
+                    </button>
+                </form>
+            </div>
+        </header>        
 
-        <a href="/admin" class="btn btn-danger">Admin Panel</a>
-
-        {% endif %}
-    </div>
-</nav>
-
-<div class="container mt-4">
-
-    <!-- Summary Cards -->
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card shadow">
-                <div class="card-body text-center">
-                    <h5>Total Products</h5>
-                    <h3>{{ total_products }}</h3>
-                </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="glass-card p-6">
+                <p class="text-slate-500 text-sm font-medium">Total Products</p>
+                <h3 class="text-3xl font-bold text-slate-800 mt-1">{{ total_products }}</h3>
+            </div>
+            <div class="glass-card p-6">
+                <p class="text-slate-500 text-sm font-medium">Total Stock</p>
+                <h3 class="text-3xl font-bold text-slate-800 mt-1">{{ total_stock }}</h3>
+            </div>
+            <div class="glass-card p-6 border-l-4 border-l-red-500">
+                <p class="text-slate-500 text-sm font-medium">Low Stock Items</p>
+                <h3 class="text-3xl font-bold text-red-600 mt-1">{{ low_stock_count }}</h3>
+            </div>
+            <div class="glass-card p-6 bg-indigo-50">
+                <p class="text-indigo-600 text-sm font-medium">Inventory Value</p>
+                <h3 class="text-3xl font-bold text-slate-800 mt-1">₹ {{ total_value }}</h3>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card shadow">
-                <div class="card-body text-center">
-                    <h5>Total Stock</h5>
-                    <h3>{{ total_stock }}</h3>
-                </div>
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
+            <div class="glass-card p-6 lg:col-span-1">
+                <h5 class="font-bold text-slate-800 mb-4">Quick Add Item</h5>
+                <form method="POST" action="/add_item" class="space-y-4">
+                    <input name="name" class="w-full px-4 py-2 border rounded-lg" placeholder="Item Name" required>
+                    <div class="grid grid-cols-2 gap-4">
+                        <input name="quantity" type="number" class="w-full px-4 py-2 border rounded-lg" placeholder="Qty" required>
+                        <input name="price" type="number" step="0.01" class="w-full px-4 py-2 border rounded-lg" placeholder="Price" required>
+                    </div>
+                    <button class="w-full bg-slate-900 text-white py-2 rounded-lg hover:bg-slate-800 transition-all">Add Product</button>
+                </form>
+            </div>
+
+            <div class="glass-card p-6 lg:col-span-2">
+                <h5 class="font-bold text-slate-800 mb-4">Transaction Trend</h5>
+                <canvas id="trendChart" height="120"></canvas>
+            </div>
+
+            <div class="glass-card p-6 lg:col-span-1 text-center">
+                <h5 class="font-bold text-slate-800 mb-4">Stock Breakdown</h5>
+                <canvas id="stockChart"></canvas>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card shadow border-danger">
-                <div class="card-body text-center">
-                    <h5 class="text-danger">Low Stock Items</h5>
-                    <h3 class="text-danger">{{ low_stock_count }}</h3>
-                </div>
+        <div class="glass-card overflow-hidden">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h5 class="font-bold text-slate-800">Live Inventory List</h5>
+                <a href="/export" class="text-indigo-600 font-semibold hover:underline">Export to Excel</a>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 border-b text-slate-600 text-sm">
+                        <tr>
+                            <th class="p-4">Name</th>
+                            <th class="p-4">RFID</th>
+                            <th class="p-4">Quantity</th>
+                            <th class="p-4">Price</th>
+                            <th class="p-4">Status</th>
+                            <th class="p-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                        {% for item in items %}
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="p-4 font-medium text-slate-800">{{ item.name }}</td>
+                            <td class="p-4 text-slate-500 font-mono text-sm">{{ item.rfid_tag }}</td>
+                            <td class="p-4">{{ item.quantity }}</td>
+                            <td class="p-4">₹ {{ item.price }}</td>
+                            <td class="p-4">
+                                {% if item.quantity <= 5 %}
+                                <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Low Stock</span>
+                                {% else %}
+                                <span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Normal</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-4 flex gap-2">
+                                <a href="/scan/{{item.rfid_tag}}/in" class="px-2 py-1 bg-green-500 text-white rounded text-xs">IN</a>
+                                <a href="/scan/{{item.rfid_tag}}/out" class="px-2 py-1 bg-orange-500 text-white rounded text-xs">OUT</a>
+                                <a href="/edit_item/{{ item._id }}" class="px-2 py-1 border border-slate-300 rounded text-xs">Edit</a>
+                                <a href="/delete_item/{{ item._id }}" onclick="return confirm('Delete?')" class="px-2 py-1 text-red-500 hover:bg-red-50 rounded text-xs">Delete</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
-    </div>
+    </main>
 
-    <!-- Add Item -->
-    <div class="card shadow mb-4">
-        <div class="card-body">
-            <h5>Add New Item</h5>
-            <form method="POST" action="/add_item" class="row g-3">
-                <div class="col-md-5">
-                    <input name="name" class="form-control" placeholder="Item Name" required>
-                </div>
-                <div class="col-md-3">
-                    <input name="quantity" type="number" class="form-control" placeholder="Quantity" required>
-                </div>
-                <div class="col-md-2">
-                    <input name="price" type="number" step="0.01" class="form-control" placeholder="Price" required>
-                </div>
-                <div class="col-md-2">
-                    <button class="btn btn-primary w-100">Add Item</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <form method="GET" action="/dashboard" class="mb-3">
-    <div class="input-group">
+    <script>
+        // Data from Flask logic
+        const trendCtx = document.getElementById('trendChart');
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: {{ trend_dates | tojson }},
+                datasets: [{
+                    label: 'Transactions',
+                    data: {{ trend_counts | tojson }},
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
 
-        <input 
-        type="text" 
-        name="search" 
-        class="form-control"
-        placeholder="Search product name..."
-        value="{{ search_query if search_query else '' }}">
+        // --- NEW STOCK DONUT CHART ---
+        const stockCtx = document.getElementById('stockChart');
+        new Chart(stockCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ item_names | tojson }},
+                datasets: [{
+                    data: {{ item_quantities | tojson }},
+                    backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'],
+                    borderWidth: 2,
+                    hoverOffset: 15
+                }]
+            },
+            options: { cutout: '70%', plugins: { legend: { display: false } } }
+        });
+        
+        // --- NOTIFICATIONS ---
+        
+        // Error handling from URL
+        // --- NEW PROFESSIONAL NOTIFICATIONS ---
+        
+        // 1. Setup the Toast configuration
+        const Toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+          didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+          }
+        });
 
-        <button class="btn btn-primary" type="submit">
-        Search
-        </button>
-        <a href="/dashboard" class="btn btn-secondary">
-        Clear
-        </a>
-
-    </div>
-</form>
-
-    <!-- Inventory Table -->
-    <div class="card shadow">
-        <div class="card-body">
-            <h5 class="mb-3">Inventory List</h5>
-            <h5 class="text-end text-success mb-3">
-            Total Inventory Value: ₹ {{ total_value }}
-            </h5>
-            <table class="table table-bordered table-hover">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Name</th>
-                        <th>RFID</th>
-                        <th>Quantity</th>
-                        <th>Price</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-
-                {% for item in items %}
-                    <tr class="{% if item.quantity <= 5 %} table-danger {% endif %}">
-                        <td>{{ item.name }}</td>
-                        <td>{{ item.rfid_tag }}</td>
-                        <td>{{ item.quantity }}</td>
-                        <td>₹ {{ item.price }}</td>
-                        <td>
-                            {% if item.quantity <= 5 %}
-                                <span class="badge bg-danger">Low Stock</span>
-                            {% else %}
-                                <span class="badge bg-success">Normal</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="/scan/{{item.rfid_tag}}/in" class="btn btn-success btn-sm">IN</a>
-                            <a href="/scan/{{item.rfid_tag}}/out" class="btn btn-warning btn-sm">OUT</a>                            
-                            <a href="/edit_item/{{ item._id }}" class="btn btn-primary btn-sm">Edit</a>
-                            <a href="/export" class="btn btn-success btn-sm">Export Excel</a>
-                            <a href="/delete_item/{{ item._id }}" 
-                            class="btn btn-danger btn-sm"
-                            onclick="return confirm('Delete this product?')">
-                            Delete
-                            </a>
-                            
-                        </td>
-                    </tr>
-                {% endfor %}
-
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<div class="container mt-5">
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card shadow">
-                <div class="card-body">
-                    <h5>Stock Levels</h5>
-                    <canvas id="stockChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow">
-                <div class="card-body">
-                    <h5>Transaction Trend</h5>
-                    <canvas id="trendChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    const stockCtx = document.getElementById('stockChart');
-    new Chart(stockCtx, {
-        type: 'bar',
-        data: {
-            labels: {{ item_names | tojson }},
-            datasets: [{
-                label: 'Quantity',
-                data: {{ item_quantities | tojson }},
-                borderWidth: 1
-            }]
+        // 2. Check for URL parameters (Success or Error)
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (urlParams.get('success') === 'added') {
+            Toast.fire({
+              icon: 'success',
+              title: 'Item added successfully!'
+            });
         }
-    });
 
-    const trendCtx = document.getElementById('trendChart');
-    new Chart(trendCtx, {
-        type: 'line',
-        data: {
-            labels: {{ trend_dates | tojson }},
-            datasets: [{
-                label: 'Transactions Per Day',
-                data: {{ trend_counts | tojson }},
-                fill: false,
-                tension: 0.1
-            }]
+        if (urlParams.get('error') === 'duplicate') {
+            Toast.fire({
+              icon: 'error',
+              title: 'Item already exists!'
+            });
         }
-    });
-</script>
+    </script>
+
+    {% if error_message %}
+    <script>
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops...',
+          text: '{{ error_message }}',
+          confirmButtonColor: '#6366f1',
+        });
+    </script>
+    {% endif %}
 
 </body>
 </html>

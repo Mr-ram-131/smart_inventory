@@ -11,6 +11,48 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo.errors import DuplicateKeyError
 from bson.objectid import ObjectId
 from flask import send_file
+import smtplib
+from email.mime.text import MIMEText
+import secrets  # For generating secure tokens
+from datetime import datetime, timedelta
+
+
+# Email Configuration (Use an App Password for Gmail)
+MAIL_SERVER = "smtp.gmail.com"
+MAIL_PORT = 587
+MAIL_USERNAME = "pradhanmramasankar15@gmail.com"  # Your email
+MAIL_PASSWORD = "nsnr iffc zyip esft"      # Not your login password, a Google App Password
+ADMIN_EMAIL = "pradhanmramasankar15@gmail.com"    # Where the alerts go
+
+# Add 'recipient_email' as a parameter
+def send_low_stock_alert(item_name, current_qty, recipient_email):
+    subject = f"⚠️ LOW STOCK ALERT: {item_name}"
+    body = f"Hello! Your item '{item_name}' is running low. Only {current_qty} left in stock."
+    
+    msg = MIMEText(body)
+    msg['Subject'] = subject
+    msg['From'] = MAIL_USERNAME
+    msg['To'] = recipient_email  # Now it sends to the specific user!
+
+    with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as server:
+        server.starttls()
+        server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.send_message(msg)
+
+
+def send_reset_email(recipient_email, reset_url):
+    subject = "Password Reset Request - SmartInv"
+    body = f"Click the link below to reset your password. This link expires in 30 minutes:\n\n{reset_url}"
+    
+    msg = MIMEText(body)
+    msg['Subject'] = subject
+    msg['From'] = MAIL_USERNAME
+    msg['To'] = recipient_email
+
+    with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as server:
+        server.starttls()
+        server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.send_message(msg)
 
 load_dotenv()
 
@@ -66,6 +108,59 @@ def login():
         return render_template("login.html", error="Invalid credentials")
 
     return render_template("login.html")
+
+
+# --- FORGOT PASSWORD: STEP 1 (Request) ---
+@app.route("/forgot_password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        email = request.form["email"]
+        user = users_col.find_one({"email": email})
+        
+        if user:
+            token = secrets.token_urlsafe(32)
+            # Token expires in 30 minutes
+            expiration = datetime.now() + timedelta(minutes=30)
+            
+            users_col.update_one(
+                {"email": email},
+                {"$set": {"reset_token": token, "token_expiry": expiration}}
+            )
+            
+            # Send the Email
+            if os.environ.get("RENDER"):
+                reset_url = url_for('reset_password', token=token, _external=True)
+            else:
+                reset_url = f"http://127.0.0.1:10000/reset_password/{token}"
+            
+            send_reset_email(email, reset_url)
+            
+            return render_template("login.html", success_message="Reset link sent to your email!")
+            
+        return render_template("forgot_password.html", error="Email not found")
+    return render_template("forgot_password.html")
+
+# --- FORGOT PASSWORD: STEP 2 (Actual Reset) ---
+@app.route("/reset_password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    user = users_col.find_one({
+        "reset_token": token,
+        "token_expiry": {"$gt": datetime.now()} # Must not be expired
+    })
+    
+    if not user:
+        return "Invalid or expired token", 400
+    
+    if request.method == "POST":
+        new_password = generate_password_hash(request.form["password"])
+        users_col.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"password": new_password}, "$unset": {"reset_token": "", "token_expiry": ""}}
+        )
+        return redirect("/login?success=reset")
+        
+    return render_template("reset_password.html", token=token)
+
 # -------- DASHBOARD --------
 @app.route('/dashboard')
 def dashboard():
@@ -129,27 +224,33 @@ def dashboard():
     
 
 #--------- Create Account --------
-@app.route("/register", methods=["GET","POST"])
+@app.route("/register", methods=["GET", "POST"])
 def register():
-
     if request.method == "POST":
         username = request.form["username"]
+        email = request.form["email"]
         password = request.form["password"]
 
-        from werkzeug.security import generate_password_hash
-        hashed = generate_password_hash(password)
-
-        existing = users_col.find_one({"username": username})
-
-        if existing:
-            return render_template("register.html", error_message="User already exists")
-
-        users_col.insert_one({
-            "username": username,
-            "password": hashed
+        # 1. Check if Username OR Email already exists
+        existing_user = users_col.find_one({
+            "$or": [
+                {"username": username},
+                {"email": email}
+            ]
         })
 
-        return redirect("/login")
+        if existing_user:
+            msg = "Username or Email already registered!"
+            return render_template("register.html", error_message=msg)
+
+        # 2. If unique, create the user
+        hashed = generate_password_hash(password)
+        users_col.insert_one({
+            "username": username,
+            "email": email,
+            "password": hashed
+        })
+        return redirect(url_for('login', success='registered'))
 
     return render_template("register.html")
 
@@ -218,7 +319,7 @@ def add_item():
         "owner": session["user"]
     })
 
-    return redirect("/dashboard")
+    return redirect("/dashboard?success=added")
 
 
 # -------- SCAN ITEM (SIMULATED RFID) --------
@@ -227,11 +328,25 @@ def scan_item(rfid_tag, action):
     item = items_col.find_one({"rfid_tag": rfid_tag})
 
     if item:
+        new_quantity = item["quantity"]
+        
         if action == "in":
-            items_col.update_one({"rfid_tag": rfid_tag}, {"$inc": {"quantity": 1}})
+            new_quantity += 1
+            items_col.update_one({"rfid_tag": rfid_tag}, {"$set": {"quantity": new_quantity}})
+            
         elif action == "out":
             if item["quantity"] > 0:
-                items_col.update_one({"rfid_tag": rfid_tag}, {"$inc": {"quantity": -1}})
+                new_quantity -= 1
+                items_col.update_one({"rfid_tag": rfid_tag}, {"$set": {"quantity": new_quantity}})
+                
+                # TRIGGER EMAIL ALERT: If stock hits 5 or less
+                if new_quantity <= 5:
+                    # 1. Find the user who owns this item
+                    owner_user = users_col.find_one({"username": item["owner"]})
+                    
+                    # 2. If they have an email saved, send the alert to THEM
+                    if owner_user and "email" in owner_user:
+                        send_low_stock_alert(item["name"], new_quantity, owner_user["email"])
 
         transactions_col.insert_one({
             "rfid_tag": rfid_tag,
@@ -241,7 +356,8 @@ def scan_item(rfid_tag, action):
             "owner": session["user"]
         })
 
-    return redirect(url_for('dashboard'))
+    # Redirect to dashboard with a 'scanned' success message for the Toast notification
+    return redirect(url_for('dashboard', success='scanned'))
 
 # -------- EDIT ITEM --------
 @app.route("/edit_item/<id>", methods=["GET","POST"])
@@ -304,7 +420,7 @@ def transactions():
     if 'user' not in session:
         return redirect(url_for('login'))
 
-    transactions = list(transactions_col.find({"owner": session["user"]}))
+    transactions = list(transactions_col.find({"owner": session["user"]}).sort("timestamp", -1))
 
     return render_template(
         "transactions.html",
@@ -345,9 +461,23 @@ def logout():
     return redirect(url_for('login'))
 
 
-if __name__ == "__main__":
+# -------- SCANNER INTERFACE --------
+@app.route("/scanner")
+def scanner_view():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    
+    # Get all items so the user can "pick" one to simulate a scan
+    items = list(items_col.find({"owner": session["user"]}))
+    return render_template("scanner.html", items=items)
 
-    # Ensure users collection exists and admin user exists
+
+if __name__ == "__main__":
+    # 1. Get the Port from Render's environment, or default to 10000 for local testing
+
+    port = int(os.environ.get("PORT", 10000))
+
+    # 2. Ensure the admin user exists with a default email
     existing_user = users_col.find_one({"username": "admin"})
 
     if not existing_user:
@@ -355,7 +485,11 @@ if __name__ == "__main__":
         hashed_password = generate_password_hash("admin123")
         users_col.insert_one({
             "username": "admin",
-            "password": hashed_password
+            "password": hashed_password,
+            "email": "your-admin-email@gmail.com", # CHANGE THIS to your actual email
+            "role": "admin"
         })
-
-    app.run(host="0.0.0.0", port=10000)
+        print("Admin user created successfully.")
+    
+    # 3. Run the app on the dynamic port
+    app.run(host="0.0.0.0", port=port , debug=False)

@@ -1,14 +1,54 @@
-<h2>Edit Item</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Item | Smart Inventory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-6">
 
-<form method="POST">
-Name:
-<input type="text" name="name" value="{{item.name}}"><br>
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl shadow-slate-200 border border-slate-100 overflow-hidden">
+        <div class="bg-indigo-600 p-6 text-white">
+            <h2 class="text-xl font-bold">Edit Inventory Item</h2>
+            <p class="text-indigo-100 text-sm mt-1">Update the details for <strong>{{ item.name }}</strong></p>
+        </div>
 
-Quantity:
-<input type="number" name="quantity" value="{{item.quantity}}"><br>
+        <form method="POST" class="p-8 space-y-5">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Item Name</label>
+                <input type="text" name="name" value="{{ item.name }}" required
+                    class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-slate-800">
+            </div>
 
-Price:
-<input type="number" name="price" value="{{item.price}}"><br>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Quantity</label>
+                    <input type="number" name="quantity" value="{{ item.quantity }}" required
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-slate-800">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Price (₹)</label>
+                    <input type="number" step="0.01" name="price" value="{{ item.price }}" required
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-slate-800">
+                </div>
+            </div>
 
-<button type="submit">Update</button>
-</form>
+            <div class="pt-4 flex flex-col gap-3">
+                <button type="submit" 
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-100 transition-all transform hover:-translate-y-0.5 active:scale-[0.98]">
+                    Save Changes
+                </button>
+                
+                <a href="/dashboard" 
+                    class="w-full text-center text-slate-500 font-medium py-2 hover:text-slate-700 transition-colors text-sm">
+                    Cancel and Go Back
+                </a>
+            </div>
+        </form>
+    </div>
+
+</body>
+</html>
