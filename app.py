@@ -26,38 +26,45 @@ ADMIN_EMAIL = "pradhanmramasankar15@gmail.com"    # Where the alerts go
 
 # Add 'recipient_email' as a parameter
 def send_low_stock_alert(item_name, current_qty, recipient_email):
-    subject = f"⚠️ LOW STOCK ALERT: {item_name}"
-    body = f"Hello! Your item '{item_name}' is running low. Only {current_qty} left in stock."
-    
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = MAIL_USERNAME
-    msg['To'] = recipient_email  # Now it sends to the specific user!
+    try:
+        subject = f"⚠️ LOW STOCK ALERT: {item_name}"
+        body = f"Hello! Your item '{item_name}' is running low. Only {current_qty} left in stock."
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = MAIL_USERNAME
+        msg['To'] = recipient_email
 
-    with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as server:
-        server.starttls()
-        server.login(MAIL_USERNAME, MAIL_PASSWORD)
-        server.send_message(msg)
-
+        # Added timeout=10 to prevent Render SIGKILL
+        with smtplib.SMTP(MAIL_SERVER, MAIL_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(MAIL_USERNAME, MAIL_PASSWORD)
+            server.send_message(msg)
+            print(f"Low stock alert sent to {recipient_email}")
+    except Exception as e:
+        print(f"Error sending low stock alert: {e}")
 
 def send_reset_email(recipient_email, reset_url):
-    subject = "Password Reset Request - SmartInv"
-    body = f"Click the link below to reset your password. This link expires in 30 minutes:\n\n{reset_url}"
-    
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = MAIL_USERNAME
-    msg['To'] = recipient_email
+    try:
+        subject = "Password Reset Request - SmartInv"
+        body = f"Click the link below to reset your password. This link expires in 30 minutes:\n\n{reset_url}"
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = MAIL_USERNAME
+        msg['To'] = recipient_email
 
-    with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as server:
-        server.starttls()
-        server.login(MAIL_USERNAME, MAIL_PASSWORD)
-        server.send_message(msg)
+        with smtplib.SMTP(MAIL_SERVER, MAIL_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(MAIL_USERNAME, MAIL_PASSWORD)
+            server.send_message(msg)
+            print(f"Reset email sent to {recipient_email}")
+    except Exception as e:
+        print(f"Error sending reset email: {e}")
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = "inventory_secret"
+app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 # MongoDB Connection
 client = MongoClient("mongodb+srv://Rudra:Rudra123@cluster0.5zoihpi.mongodb.net/?appName=Cluster0")
@@ -345,8 +352,10 @@ def scan_item(rfid_tag, action):
                     owner_user = users_col.find_one({"username": item["owner"]})
                     
                     # 2. If they have an email saved, send the alert to THEM
-                    if owner_user and "email" in owner_user:
+                    if owner_user and owner_user.get("email"):
                         send_low_stock_alert(item["name"], new_quantity, owner_user["email"])
+                    else:
+                        print(f"No email found for user {item['owner']}")
 
         transactions_col.insert_one({
             "rfid_tag": rfid_tag,

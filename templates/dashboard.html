@@ -17,7 +17,7 @@
 </head>
 <body class="flex min-h-screen">
 
-    <aside class="w-64 bg-slate-900 text-white flex flex-col hidden md:flex sticky top-0 h-screen">
+    <aside class="w-64 bg-slate-900 text-white flex flex-col hidden lg:flex sticky top-0 h-screen">
         <div class="p-6 text-xl font-bold border-b border-slate-800 flex items-center gap-2">
             <div class="w-8 h-8 bg-indigo-500 rounded-lg"></div>
             Smart Inventory
@@ -66,7 +66,7 @@
             </div>
         </header>        
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div class="glass-card p-6">
                 <p class="text-slate-500 text-sm font-medium">Total Products</p>
                 <h3 class="text-3xl font-bold text-slate-800 mt-1">{{ total_products }}</h3>
@@ -235,6 +235,43 @@
         });
     </script>
     {% endif %}
+
+
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 flex justify-around items-center z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+    <a href="/dashboard" class="flex flex-col items-center gap-1 text-indigo-600">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+        <span class="text-[10px] font-bold uppercase">Home</span>
+    </a>
+    <a href="/scanner" class="flex flex-col items-center gap-1 text-slate-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+        </svg>
+        <span class="text-[10px] font-bold uppercase">Scan</span>
+    </a>
+    <a href="{{ url_for('predict') }}" class="flex flex-col items-center gap-1 text-slate-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+        <span class="text-[10px] font-bold uppercase">AI</span>
+    </a>
+    <a href="{{ url_for('logout') }}" class="flex flex-col items-center gap-1 text-rose-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        <span class="text-[10px] font-bold uppercase">Logout</span>
+    </a>
+</div>
+
+<style>
+    @media (max-width: 1024px) {
+        main { padding-bottom: 80px !important; }
+        .grid { grid-template-cols: 1fr !important; } /* Fix for card layout on mobile */
+    }
+</style>
+
+
 
 </body>
 </html>
