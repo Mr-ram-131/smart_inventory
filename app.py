@@ -76,6 +76,19 @@ transactions_col = db["transactions"]
 users_col = db["users"]
 
 
+existing_user = users_col.find_one({"username": "admin"})
+
+if not existing_user:
+    hashed_password = generate_password_hash("admin123")
+    users_col.insert_one({
+        "username": "admin",
+        "password": hashed_password,
+        "email": "your-admin-email@gmail.com",
+        "role": "admin"
+    })
+    print("Admin user created successfully.")
+
+
 
 # Load ML Model
 with open("stock_model.pkl", "rb") as f:
@@ -482,23 +495,6 @@ def scanner_view():
 
 
 if __name__ == "__main__":
-    # 1. Get the Port from Render's environment, or default to 10000 for local testing
-
     port = int(os.environ.get("PORT", 10000))
-
-    # 2. Ensure the admin user exists with a default email
-    existing_user = users_col.find_one({"username": "admin"})
-
-    if not existing_user:
-        from werkzeug.security import generate_password_hash
-        hashed_password = generate_password_hash("admin123")
-        users_col.insert_one({
-            "username": "admin",
-            "password": hashed_password,
-            "email": "your-admin-email@gmail.com", # CHANGE THIS to your actual email
-            "role": "admin"
-        })
-        print("Admin user created successfully.")
-    
-    # 3. Run the app on the dynamic port
-    app.run(host="0.0.0.0", port=port , debug=False)
+    app.run(host="0.0.0.0", port=port, debug=True)
+# No app.run() needed for Render (Gunicorn handles it)
