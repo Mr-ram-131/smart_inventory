@@ -7,6 +7,7 @@ import numpy as np
 import os
 from dotenv import load_dotenv
 load_dotenv()
+import threading
 
 from flask import session
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -152,7 +153,7 @@ def forgot_password():
             # Send the Email
             reset_url = url_for('reset_password', token=token, _external=True)
             
-            send_reset_email(email, reset_url)
+            threading.Thread(target=send_reset_email, args=(email, reset_url)).start()
             
             return render_template("login.html", success_message="Reset link sent to your email!")
             
@@ -366,7 +367,10 @@ def scan_item(rfid_tag, action):
                     # 2. If they have an email saved, send the alert to THEM
                     if owner_user and "email" in owner_user:
                         print(f"DEBUG: Found email for {item['owner']}: {owner_user['email']}")
-                        send_low_stock_alert(item["name"], new_quantity, owner_user["email"])
+                        threading.Thread(
+                            target=send_low_stock_alert,
+                            args=(item["name"], new_quantity, owner_user["email"])
+                        ).start()
                     else:
                         print(f"No email found for user {item['owner']}")
 
