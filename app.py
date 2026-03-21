@@ -6,6 +6,8 @@ import pickle
 import numpy as np
 import os
 from dotenv import load_dotenv
+load_dotenv()
+
 from flask import session
 from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo.errors import DuplicateKeyError
@@ -20,8 +22,8 @@ from datetime import datetime, timedelta
 # Email Configuration (Use an App Password for Gmail)
 MAIL_SERVER = "smtp.gmail.com"
 MAIL_PORT = 587
-MAIL_USERNAME = "pradhanmramasankar15@gmail.com"  # Your email
-MAIL_PASSWORD = "dkft mphv uqkv cyzr"      # Not your login password, a Google App Password
+MAIL_USERNAME = os.getenv("MAIL_USERNAME")
+MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")     # Not your login password, a Google App Password
 ADMIN_EMAIL = "pradhanmramasankar15@gmail.com"    # Where the alerts go
 
 # Add 'recipient_email' as a parameter
@@ -60,7 +62,7 @@ def send_reset_email(recipient_email, reset_url):
     except Exception as e:
         print(f"Error sending reset email: {e}")
 
-load_dotenv()
+
 
 app = Flask(__name__)
 app.secret_key = "inventory_secret"
@@ -135,10 +137,7 @@ def forgot_password():
             )
             
             # Send the Email
-            if os.environ.get("RENDER"):
-                reset_url = url_for('reset_password', token=token, _external=True)
-            else:
-                reset_url = f"http://127.0.0.1:10000/reset_password/{token}"
+            reset_url = url_for('reset_password', token=token, _external=True)
             
             send_reset_email(email, reset_url)
             
